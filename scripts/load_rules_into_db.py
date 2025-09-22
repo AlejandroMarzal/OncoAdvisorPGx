@@ -3,7 +3,7 @@
 Script to load PGx rules from a CSV file into an SQLite database.
 """
 
-# ==== Standard library imports ====
+# Standard library imports ====
 import sys
 import sqlite3
 import logging
@@ -14,11 +14,12 @@ from typing import Optional
 # ==== Third-party imports ====
 import pandas as pd
 
-# ---- Configure logging ----
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
+
 
 def load_rules_to_db(csv_file: str, db_file: Optional[str] = None) -> bool:
     """Load PGx rules from a CSV file into SQLite."""
@@ -56,6 +57,7 @@ def load_rules_to_db(csv_file: str, db_file: Optional[str] = None) -> bool:
             logging.error("Missing required columns: %s", missing_required)
             return False
 
+
         # Connect to database and insert rules
         logging.info("Connecting to database %s...", db_file)
         with sqlite3.connect(db_file) as conn:
@@ -85,7 +87,7 @@ def load_rules_to_db(csv_file: str, db_file: Optional[str] = None) -> bool:
             logging.info("%d rules successfully loaded into the database", count)
             logging.info("Database saved at: %s", db_file)
 
-            # --- Preview first 3 rules in tabular format ---
+            # Preview first 3 rules in tabular format
             cursor.execute("SELECT * FROM rules LIMIT 3")
             rows = cursor.fetchall()
             columns = [desc[0] for desc in cursor.description]
@@ -107,8 +109,8 @@ def main() -> None:
     """CLI entry point."""
     if len(sys.argv) != 2:
         print("Usage: python load_rules_into_db.py <rules_file.csv>")
-        sys.exit(1)     
-    csv_file = sys.argv[1]
+        sys.exit(1)
+    csv_file = sys.argv[1] # second argument
     db_file = "backend/db/pgx_app.db"
 
     # Call to the function

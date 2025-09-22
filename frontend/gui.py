@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-OncoAdvisorPGx GUI Frontend using Streamlit.
-
-Simple web interface for pharmacogenomic analysis:
+OncoAdvisorPGx GUI Frontend using Streamlit. Simple web interface for
+pharmacogenomic analysis:
 - Upload VCF files for processing via the backend API.
 - PGx rules are loaded from SQLite.
 - Displays analysis results in a structured table format.
@@ -30,13 +29,14 @@ st.markdown(
 # ---------------------------------------------------------------------
 # Backend URL configuration
 # ---------------------------------------------------------------------
-backend_url = "http://localhost:8000/api/analyze"
+backend_url = "http://localhost:8000"
+analyze_url = f"{backend_url}/api/analyze"
 
 
 # ---------------------------------------------------------------------
 # Directories for auto-save
 # ---------------------------------------------------------------------
-BASE_DIR = Path(os.getcwd())
+BASE_DIR = Path.home() / "home_workspace"
 RESULTS_DIR = BASE_DIR / "results"
 JSON_DIR = RESULTS_DIR / "json"
 TXT_DIR = RESULTS_DIR / "txt"
@@ -61,22 +61,25 @@ vcf_file = st.file_uploader(
 # ---------------------------------------------------------------------
 # Run analysis
 # ---------------------------------------------------------------------
+# Initial validations
 if st.button("Analyze"):
     if not patient_prefix:
         st.error("Patient prefix is required. Please enter a value.")
-        st.stop()  # Detiene ejecución hasta que se ingrese un valor
+        st.stop()  # Stops execution until some value is enetered
     if not vcf_file or not api_key:
         st.error("VCF file and API key are required.")
-        st.stop()
+        st.stop()  # Stops execution until a VCF file and the correct API key are enetered
 
+    # Prepare data to send to the backendd
     files = {"vcf": (vcf_file.name, vcf_file.getvalue())}
     data = {"patient_prefix": patient_prefix}
-    headers = {"X-API-Key": api_key}
+    headers = {"API-password": api_key}
 
+    # Send HTTP request to backend with a spinner
     with st.spinner("Processing analysis..."):
         try:
             response = requests.post(
-                backend_url,
+                analyze_url,
                 files=files,
                 data=data,
                 headers=headers,
@@ -86,8 +89,10 @@ if st.button("Analyze"):
             st.error(f"Error connecting to backend: {e}")
             st.stop()
 
+    # Check the response status
     if response.status_code != 200:
         st.error(f"API Error {response.status_code}: {response.text}")
+    # Parse the JSON response
     else:
         try:
             payload = response.json()
@@ -95,6 +100,7 @@ if st.button("Analyze"):
             st.error(f"Backend did not return valid JSON. Raw response:\n\n{response.text[:500]}")
             st.stop()
 
+        # Build the results table
         results = payload.get("results", {})
         rows = []
         for patient_id, result_obj in results.items():
@@ -102,37 +108,46 @@ if st.button("Analyze"):
             for match in result_obj.get("matches", []):
                 rows.append({
                     "patient": patient_id,
-                    "variant": match.get("variant", ""),
-                    "gene": match.get("gene", ""),
-                    "drug": match.get("drug", ""),
-                    "effect": match.get("effect", ""),
-                    "level_of_evidence": match.get("level_of_evidence", ""),
-                    "recommendation": match.get("recommendation", ""),
-                    "clinical_guideline": match.get("clinical_guideline", "")
+                    "Variant match": match.get("variant_match", ""),
+                    "rsID": match.get("variant_rsid", ""),
+                    "Genomic coordinate": match.get("variant_coor", ""),
+                    "Gene": match.get("gene", ""),
+                    "Drug": match.get("drug", ""),
+                    "Effect": match.get("effect", ""),
+                    "Level of evidence": match.get("level_of_evidence", ""),
+                    "Clinical guideline": match.get("clinical_guideline", ""),
+                    "Recommendation": match.get("recommendation", "")
                 })
 
+            # JSON request
+            json_resp = requests.get(
+                f"{backend_url}/api/patients/{patient_id}/pgx-json", 
+                headers=headers
+                )
+            
+            # TXT request
+            txt_resp = requests.get(
+                f"{backend_url}/api/patients/{patient_id}/pgx-summary",
+                headers=headers
+            )
+            
+            # Download buttons (JSON and TXT)
+            st.download_button(
+                f"Download JSON for {patient_id}",
+                data=json_resp.content,
+                file_name=f"{patient_id}.json",
+                mime="application/json"
+            )
 
-            # Auto-save JSON
-            json_path = JSON_DIR / f"{patient_id}.json"
-            with open(json_path, "w") as f:
-                json.dump(result_obj, f, indent=2)
+            st.download_button(
+                f"Download TXT for {patient_id}",
+                data=txt_resp.text,
+                file_name=f"{patient_id}.txt",
+                mime="text/plain"
+            )
 
-            # Auto-save TXT summary
-            txt_path = TXT_DIR / f"{patient_id}.txt"
-            with open(txt_path, "w") as f:
-                f.write(f"Patient {patient_id} processed.\n")
-                for match in result_obj.get("matches", []):
-                    f.write(f"Variant: {match.get('variant','')} | Drug: {match.get('drug','')} | "
-                            f"Effect: {match.get('effect','')} | Level: {match.get('level_of_evidence','')} | "
-                            f"Recommendation: {match.get('recommendation','')}\n")
-                f.write(f"\nJSON written to: {json_path}\nTXT written to: {txt_path}\n")
 
-            # Download buttons
-            st.download_button(f"Download JSON for {patient_id}", data=json.dumps(result_obj, indent=2),
-                               file_name=f"{patient_id}.json", mime="application/json")
-            st.download_button(f"Download TXT for {patient_id}", data=open(txt_path).read(),
-                               file_name=f"{patient_id}.txt", mime="text/plain")
-
+        # Display the table in Streamlit
         if rows:
             df = pd.DataFrame(rows)
             st.success(f"Analysis completed. Total matches: {len(df)}")

@@ -41,7 +41,6 @@ def is_carrier(gt: str | None) -> bool:
 # ---------------------------------------------------------------------
 def load_rules_from_db(db_path: Path) -> Tuple[Dict[str, dict], dict]:
     """Load PGx rules from SQLite database into a dictionary + metadata."""
-
     # Create an empty dictionary
     rules: Dict[str, dict] = {}
 
@@ -86,22 +85,25 @@ def load_rules_from_db(db_path: Path) -> Tuple[Dict[str, dict], dict]:
 # ---------------------------------------------------------------------
 def process_multi_sample(vcf_path: Path, rules: Dict[str, dict]) -> Dict[str, dict]:
     """
-    Process a single- or multi-sample VCF file line by line.
+    Process a single or multi-sample VCF file line by line.
     Matches variants by rsID first, then by genomic coordinate.
     """
+    # Open VCF file
     open_fn = gzip.open if vcf_path.suffix == ".gz" else open
 
+    # Initialize empty structures for sample names, matches, and basic statistics
     sample_names: List[str] = []
     per_sample_matches: Dict[str, List[dict]] = {}
     per_sample_stats: Dict[str, dict] = {}
 
+    # Read VCF file and process
     with open_fn(vcf_path, "rt", encoding="utf-8") as f:
         for line in f:
             if line.startswith("##"):
                 continue
             if line.startswith("#CHROM"):
                 parts = line.strip().split()
-                if len(parts) > 9:
+                if len(parts) > 9:       # Extract sample names from VCF header columns
                     sample_names = parts[9:]
                     per_sample_matches = {s: [] for s in sample_names}
                     per_sample_stats = {
@@ -112,6 +114,8 @@ def process_multi_sample(vcf_path: Path, rules: Dict[str, dict]) -> Dict[str, di
 
             if not line.strip():
                 continue
+
+            # Extract information of each variant
             fields = line.strip().split()
             if len(fields) < 5:
                 continue
@@ -119,12 +123,14 @@ def process_multi_sample(vcf_path: Path, rules: Dict[str, dict]) -> Dict[str, di
             chrom, pos, vid, ref, alt = fields[0], fields[1], fields[2], fields[3], fields[4]
             locus = f"{chrom}:{pos}:{ref}:{alt}"
 
+            # Determine index of genotype in FORMAT column
             gt_idx = None
             if len(fields) > 8:
                 format_cols = fields[8].split(":")
                 if "GT" in format_cols:
                     gt_idx = format_cols.index("GT")
 
+            # Process variant for each sample
             for i, sample in enumerate(sample_names, start=9):
                 stats = per_sample_stats[sample]
                 stats["total_variants"] += 1
@@ -135,6 +141,7 @@ def process_multi_sample(vcf_path: Path, rules: Dict[str, dict]) -> Dict[str, di
                     if gt_idx < len(sample_cols):
                         gt = sample_cols[gt_idx]
 
+                # Verify if it is carrier and look for matches
                 if is_carrier(gt):
                     rule = rules.get(vid) or rules.get(locus)
                     if rule:
@@ -150,6 +157,7 @@ def process_multi_sample(vcf_path: Path, rules: Dict[str, dict]) -> Dict[str, di
                             "clinical_guideline": rule.get("clinical_guideline", ""),
                         })
 
+    # Update total matches and return results
     if sample_names:
         for s in sample_names:
             per_sample_stats[s]["total_matches"] = len(per_sample_matches[s])
@@ -160,8 +168,12 @@ def process_multi_sample(vcf_path: Path, rules: Dict[str, dict]) -> Dict[str, di
 # Result assembly
 # ---------------------------------------------------------------------
 def assemble_result(patient_id: str, sample: str, vcf_path: Path, matches: List[dict], stats: dict, rules_meta: dict | None = None) -> dict:
+    """package all the information generated in the PGx analysis into a single well-structured dictionary"""
+    # Get analysis date and time
     dt_utc = datetime.now(timezone.utc)
     dt_local = dt_utc.astimezone(EU_TZ)
+
+    # Build main result dictionary
     result = {
         "patient": patient_id,
         "sample": sample,
@@ -172,6 +184,8 @@ def assemble_result(patient_id: str, sample: str, vcf_path: Path, matches: List[
         "stats": stats,
         "matches": matches,
     }
+
+    # Optional metadata include
     if rules_meta:
         result["rules_meta"] = rules_meta
     return result
@@ -179,7 +193,13 @@ def assemble_result(patient_id: str, sample: str, vcf_path: Path, matches: List[
 # ---------------------------------------------------------------------
 # Output writers
 # ---------------------------------------------------------------------
-def write_outputs(results_dir: Path, results_by_patient: Dict[str, dict]) -> Dict[str, dict]:
+def write_outputs(results_by_patient: Dict[str, dict]) -> Dict[str, dict]:
+    """
+    takes the analysis results, writes them in three complementary formats (JSON, TXT, LOG),
+    and returns an index with the paths to these files for each patient.
+    """
+    # Set up subdirectories
+    results_dir = Path.home() / "home_workspace" / "results"
     json_dir = results_dir / "json"
     txt_dir = results_dir / "txt"
     log_dir = results_dir / "logs"
@@ -190,12 +210,16 @@ def write_outputs(results_dir: Path, results_by_patient: Dict[str, dict]) -> Dic
     for patient_id, obj in results_by_patient.items():
         safe_id = "".join(c if c.isalnum() or c in "-_" else "_" for c in patient_id)
 
+        # Write JSON files
         json_path = json_dir / f"{safe_id}.json"
         with json_path.open("w", encoding="utf-8") as jf:
             json.dump(obj, jf, indent=2, ensure_ascii=False)
 
+        # Write TXT files
         summary_path = txt_dir / f"{safe_id}.txt"
         with summary_path.open("w", encoding="utf-8") as sf:
+
+            # Header
             sf.write(f"PHARMACOGENOMIC REPORT - PATIENT {patient_id}\n")
             if "sample" in obj and obj["sample"]:
                 sf.write(f"Sample: {obj['sample']}\n")
@@ -204,18 +228,18 @@ def write_outputs(results_dir: Path, results_by_patient: Dict[str, dict]) -> Dic
             sf.write(f"Analysis date (Local): {ts_local} {tz}\n")
             sf.write(f"VCF: {obj.get('vcf_path','')}\n")
 
+            # Summary statistics
             stats = obj.get("stats", {})
             sf.write(f"Total variants read: {stats.get('total_variants', 0)}\n")
-            sf.write(f"Variants with GT: {stats.get('with_gt', 0)}\n")
-            sf.write(f"Variants without GT: {stats.get('without_gt', 0)}\n")
             sf.write(f"Total PGx matches: {stats.get('total_matches', 0)}\n\n")
 
+            # Summary matches
             matches = obj.get("matches", [])
             if matches:
                 sf.write("MATCHES FOUND:\n")
                 sf.write("-" * 50 + "\n")
                 for i, m in enumerate(matches, 1):
-                    sf.write(f"{i}. Variant: {m.get('variant','')}\n")
+                    sf.write(f"{i}. Variant match: {m.get('variant_match','')}\n")
                     if m.get("variant_rsid"):
                         sf.write(f"   RSID: {m['variant_rsid']}\n")
                     if m.get("variant_coor"):
@@ -233,12 +257,15 @@ def write_outputs(results_dir: Path, results_by_patient: Dict[str, dict]) -> Dic
             else:
                 sf.write("No pharmacogenomically relevant variants found.\n")
 
+        # Write LOG files
         log_path = log_dir / f"{safe_id}.log"
         with log_path.open("w", encoding="utf-8") as lf:
             lf.write(f"Patient {patient_id} processed.\n")
+            lf.write(f"Analysis date (Local): {ts_local} {tz}\n")
             lf.write(f"JSON written to: {json_path}\n")
             lf.write(f"TXT written to: {summary_path}\n")
 
+        # Save paths in the final dictionary
         out[patient_id] = {
             "json_path": str(json_path),
             "summary_path": str(summary_path),

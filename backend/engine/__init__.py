@@ -2,18 +2,18 @@
 PGx Core Package
 
 This package contains the core pharmacogenomic analysis functionality
-for the PGx Cancer App. It provides functions for loading PGx rules,
+for the OncoAdvisorPGx App. It provides functions for loading PGx rules,
 processing VCF files, and generating structured results.
 
 Main functions:
-- load_rules: Load pharmacogenomic rules from CSV files
+- load_rules_from_db: Load pharmacogenomic rules from SQLite database
 - process_multi_sample: Process VCF files against PGx rules
 - assemble_result: Structure analysis results for output
 - write_outputs: Write results to JSON and text files
 """
 
 from .core import (
-    load_rules,
+    load_rules_from_db,
     process_multi_sample,
     assemble_result,
     write_outputs,
@@ -21,7 +21,7 @@ from .core import (
 
 # Define public API - what gets imported with 'from pgx_core import *'
 __all__ = [
-    "load_rules",
+    "load_rules_from_db",
     "process_multi_sample",
     "assemble_result",
     "write_outputs",
