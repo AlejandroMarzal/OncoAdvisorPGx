@@ -1,9 +1,9 @@
 variant_rsid,variant_coor,drug,gene,effect,level_of_evidence,clinical_guideline,recommendation
 rs1234,1:440532:G:C,DrugA,OPSA,"Reduced metabolism",level 1A,CPIC,"Start at lower dose"
 rs5678,6:2565432:T:C,DrugB,KRAS,"Increased toxicity risk",level 1A,ASCO,"Switch therapy"
-rs9012,,DrugC,ASO1,"Improved efficacy",level 2B,NCCN,"Consider as first-line therapy"
+rs9012,4:2295731:A:G,DrugC,ASO1,"Improved efficacy",level 2B,NCCN,"Consider as first-line therapy"
 rs3546,7:2765432:T:C,DrugD,BCH8,"Dose adjustment recommended",level 1A,ESMO,"Reduce dose by 25%"
 rs2222,9:3056980:A:C,DrugE,SID4,"Poor response observed",level 1A,CPIC,"Consider alternative therapy"
 rs3333,4:2838223:T:C,DrugF,PEO2,"Higher clearance",level 1A,CPIC,"Increase dose gradually"
-rs2876328,7:2882933:C:T,DrugG,CSD9,"Severe adverse event risk",level 2A,ASCO,"Contraindicated"
+rs4444,7:2882933:C:T,DrugG,CSD9,"Severe adverse event risk",level 2A,ASCO,"Contraindicated"
 rs5555,12:3456789:G:A,DrugH,SDPK,"Enhanced efficacy",level 3,NCCN,"Use as preferred option"

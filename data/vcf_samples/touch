@@ -1,0 +1,9 @@
+$ cat data/vcf_samples/example5.vcf 
+##fileformat=VCFv4.2
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  PAT999
+1       111111  rs9991  G       A       100     PASS    .       GT      0/1
+2       222222  rs9992  C       T       100     PASS    .       GT      1/1
+3       333333  rs9993  A       G       100     PASS    .       GT      0/0
+5       555555  rs9994  T       C       100     PASS    .       GT      0/1
+8       888888  .       G       T       100     PASS    .       GT      1/0
+

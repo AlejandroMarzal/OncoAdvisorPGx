@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##INFO=<ID=.,Number=.,Type=String,Description="No INFO fields used">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM  POS       ID        REF ALT QUAL FILTER INFO FORMAT PAT_A PAT_B PAT_C
+4       111111    rs2222    G   A   100  PASS   .     GT     0/1   0/0   1/1
+5       222222    rs3333    T   C   100  PASS   .     GT     1/1   0/1   0/0
+6       333333    rs4444    C   G   100  PASS   .     GT     0/0   1/1   0/1
+12      3456789   .         G   A   100  PASS   .     GT     0/1   0/1   1/1
+
