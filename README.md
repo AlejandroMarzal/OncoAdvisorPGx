@@ -32,13 +32,10 @@ git clone https://github.com/AlejandroMarzal/OncoAdvisorPGx
 cd home_workspace
 ```
 
-### 3.2 Create a virtual environment and install dependencies (backend and frontend):
+### 3.2 Install dependencies:
 
 ```bash
-python -m venv venv
-source venv/bin/activate   # Linux/Mac
-pip install -r backend/requirements.txt
-pip install -r frontend/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 3.3 Load pharmacogenomic rules into the SQLite database:
