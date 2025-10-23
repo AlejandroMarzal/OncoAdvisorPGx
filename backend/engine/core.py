@@ -54,19 +54,35 @@ def load_rules_from_db(db_path: Path) -> Tuple[Dict[str, dict], dict]:
     rows = cursor.fetchall()
     for row in rows:
         variant_rsid, variant_coor, gene, drug, effect, loe, guideline, recommendation = row
-        variants = variant_rsid or variant_coor
-        if not variants:
-            continue
-        rules[variants] = {
-            "variant_rsid": variant_rsid or "",
-            "variant_coor": variant_coor or "",
-            "gene": gene or "",
-            "drug": drug or "",
-            "effect": effect or "",
-            "level_of_evidence": loe or "",
-            "clinical_guideline": guideline or "",
-            "recommendation": recommendation or "",
-        }
+
+        # Clean whitespace
+        variant_rsid = (variant_rsid or "").strip()
+        variant_coor = (variant_coor or "").strip().replace(" ", "")
+
+        # Store entries by both identifiers if available
+        if variant_rsid:
+            rules[variant_rsid] = {
+                "variant_rsid": variant_rsid,
+                "variant_coor": variant_coor,
+                "gene": gene or "",
+                "drug": drug or "",
+                "effect": effect or "",
+                "level_of_evidence": loe or "",
+                "clinical_guideline": guideline or "",
+                "recommendation": recommendation or "",
+            }
+
+        if variant_coor:
+            rules[variant_coor] = {
+                "variant_rsid": variant_rsid,
+                "variant_coor": variant_coor,
+                "gene": gene or "",
+                "drug": drug or "",
+                "effect": effect or "",
+                "level_of_evidence": loe or "",
+                "clinical_guideline": guideline or "",
+                "recommendation": recommendation or "",
+            }
 
     # Create a dictionary containing metadata about the rules
     meta = {
